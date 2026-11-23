@@ -36,7 +36,7 @@ def scan_receipt(receipt_id: int, db: Session = Depends(get_db), current_user: U
         db.commit()
         return OcrResult(receipt_id=receipt.id, processing_status="processed", extracted_text=text, **fields,
                          message="Review extracted fields before saving")
-    except (ValueError, pytesseract.TesseractError, OSError) as exc:
+    except (ValueError, pytesseract.TesseractError, pytesseract.TesseractNotFoundError, OSError) as exc:
         receipt.processing_status = "failed"
         db.commit()
         raise HTTPException(status_code=422, detail=f"OCR processing failed: {str(exc)}")

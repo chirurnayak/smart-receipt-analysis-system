@@ -16,7 +16,8 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Receipt Scanning and Payment Analytics API", version="1.0.0")
 
-origins = [item.strip() for item in os.getenv("CORS_ORIGINS", "*").split(",") if item.strip()]
+default_origins = "http://127.0.0.1:5173,http://localhost:5173,http://localhost:3000"
+origins = [item.strip() for item in os.getenv("CORS_ORIGINS", default_origins).split(",") if item.strip()]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,

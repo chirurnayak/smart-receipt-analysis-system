@@ -1,6 +1,8 @@
 from datetime import datetime
 from decimal import Decimal
 
+import pytesseract
+
 from app.models import Transaction
 from app.services.ocr_service import extract_fields
 from app.services.export_service import excel_report, pdf_report
@@ -24,6 +26,20 @@ def test_current_user_and_unauthorized(client, auth_headers):
     response = client.get("/api/v1/users/me", headers=auth_headers)
     assert response.status_code == 200
     assert response.json()["email"] == "test@example.com"
+
+
+def test_frontend_cors_preflight(client):
+    response = client.options(
+        "/api/v1/transactions",
+        headers={
+            "Origin": "http://127.0.0.1:5173",
+            "Access-Control-Request-Method": "GET",
+            "Access-Control-Request-Headers": "authorization,content-type",
+        },
+    )
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == "http://127.0.0.1:5173"
+    assert response.headers["access-control-allow-credentials"] == "true"
 
 
 def test_receipt_upload_and_user_access(client, auth_headers):
@@ -99,6 +115,28 @@ def test_ocr_field_extraction_and_missing_fields():
     assert fields["amount"]["value"] == "125.50"
     missing = extract_fields("Unreadable receipt")
     assert missing["transaction_date"]["confidence"] == "not_extracted"
+
+
+def test_ocr_missing_tesseract_returns_actionable_error(client, auth_headers, monkeypatch):
+    upload = client.post(
+        "/api/v1/receipts",
+        headers=auth_headers,
+        files={"file": ("receipt.png", b"receipt-image", "image/png")},
+    )
+    assert upload.status_code == 201
+
+    from app.routes import ocr as ocr_route
+
+    def missing_tesseract(_path):
+        raise pytesseract.TesseractNotFoundError()
+
+    monkeypatch.setattr(ocr_route, "extract_receipt_text", missing_tesseract)
+    response = client.post(f"/api/v1/ocr/{upload.json()['id']}", headers=auth_headers)
+    assert response.status_code == 422
+    detail = response.json()["detail"].lower()
+    assert "ocr processing failed" in detail
+    assert "tesseract is not installed" in detail
+    assert client.delete(f"/api/v1/receipts/{upload.json()['id']}", headers=auth_headers).status_code == 204
 
 
 def test_report_generators():

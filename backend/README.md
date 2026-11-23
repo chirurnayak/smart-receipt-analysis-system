@@ -34,8 +34,9 @@ Copy-Item .env.example .env
 ```
 
 Set `JWT_SECRET_KEY` in `.env` to a long random value. SQLite is the default database.
-The API reads environment variables directly or from a process environment; load `.env`
-using PowerShell before starting if it is not loaded by a hosting tool.
+The FastAPI application loads `backend/.env` automatically. Set `CORS_ORIGINS` to a
+comma-separated list of frontend origins; the example includes `http://127.0.0.1:5173`.
+Use the actual origin shown by Vite if it selects another port.
 
 Install Tesseract OCR from https://github.com/tesseract-ocr/tesseract and ensure
 `tesseract.exe` is on `PATH`. PDF OCR also requires Poppler.
